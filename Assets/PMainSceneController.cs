@@ -82,7 +82,7 @@ public class PMainSceneController : MonoBehaviour {
             Debug.Log(ex.Message);
             Debug.Log(ex.StackTrace);
         } finally {
-            Debug.Log("Press any key.");
+            Debug.Log("Finish");
             //Console.ReadKey();
         }
     }
