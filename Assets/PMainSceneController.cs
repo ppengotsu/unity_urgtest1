@@ -71,8 +71,10 @@ public class PMainSceneController : MonoBehaviour {
                 }
                 // show distance data
                 //Console.WriteLine("time stamp: " + time_stamp.ToString() + " distance[100] : " + distances[100].ToString());
-				this.outInputField.text += "time stamp: " + time_stamp.ToString() + " distance[100] : " + distances[100].ToString() + "\n";
-					Debug.Log("time stamp: " + time_stamp.ToString() + " distance[100] : " + distances[100].ToString() );
+                for(int j =0; j < distances.Count; j++){
+				//this.outInputField.text += "\ntime stamp: " + time_stamp.ToString() + " distance[" + j + "] : " + distances[j].ToString() + "\n";
+					Debug.Log("time stamp: " + time_stamp.ToString() + " distance[" + j + "] : " + distances[j].ToString() );
+                }
             }
             write(stream, SCIP_Writer.QT());    // stop measurement mode
             read_line(stream); // ignore echo back
