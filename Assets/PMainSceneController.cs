@@ -19,6 +19,13 @@ public class PMainSceneController : MonoBehaviour {
 	[SerializeField]
 	private InputField  outInputField;
 
+
+    private TcpClient _urgTCPClient;
+
+    private NetworkStream _networkStream;
+
+    private Coroutine _sensorCoroutine;
+
 	// Use this for initialization
 	void Start () {
 		
@@ -33,9 +40,9 @@ public class PMainSceneController : MonoBehaviour {
 	public void StartButton(){
 
 		Debug.Log("開始");
-		const int GET_NUM = 10;
+
         const int start_step = 0;
-        const int end_step = 760;
+        const int end_step = 1080;
 		try {
 			
             string ip_address = this.ipAddressInputField.text;
@@ -46,40 +53,18 @@ public class PMainSceneController : MonoBehaviour {
 			Debug.Log(ip_address + " : " + port_number );
             
 			
-			TcpClient urg = new TcpClient();
-            urg.Connect(ip_address, port_number);
-            NetworkStream stream = urg.GetStream();
+			
+            this._urgTCPClient.Connect(ip_address, port_number);
+             this._networkStream = this._urgTCPClient.GetStream();
 
-            write(stream, SCIP_Writer.SCIP2());
-            read_line(stream); // ignore echo back
-            write(stream, SCIP_Writer.MD(start_step, end_step));
-            read_line(stream);  // ignore echo back
+            write(this._networkStream, SCIP_Writer.SCIP2());
+            read_line(this._networkStream); // ignore echo back
+            write(this._networkStream, SCIP_Writer.MD(start_step, end_step));
+            read_line(this._networkStream);  // ignore echo back
 
-            List<long> distances = new List<long>();
-            long time_stamp = 0;
-            for (int i = 0; i < GET_NUM; ++i) {
-                string receive_data = read_line(stream);
-                if (!SCIP_Reader.MD(receive_data, ref time_stamp, ref distances)) {
-					this.outInputField.text += receive_data + "\n";
-                   Debug.Log(receive_data);
-                    break;
-                }
-                if (distances.Count == 0) {
-                    this.outInputField.text += receive_data + "\n";
-					Debug.Log(receive_data);
-                    continue;
-                }
-                // show distance data
-                //Console.WriteLine("time stamp: " + time_stamp.ToString() + " distance[100] : " + distances[100].ToString());
-                for(int j =0; j < distances.Count; j++){
-				//this.outInputField.text += "\ntime stamp: " + time_stamp.ToString() + " distance[" + j + "] : " + distances[j].ToString() + "\n";
-					Debug.Log("time stamp: " + time_stamp.ToString() + " distance[" + j + "] : " + distances[j].ToString() );
-                }
-            }
-            write(stream, SCIP_Writer.QT());    // stop measurement mode
-            read_line(stream); // ignore echo back
-            stream.Close();
-            urg.Close();
+            this._sensorCoroutine = StartCoroutine(UpdateSensorValue());
+
+
         } catch (Exception ex) {
             Debug.Log(ex.Message);
             Debug.Log(ex.StackTrace);
@@ -87,6 +72,47 @@ public class PMainSceneController : MonoBehaviour {
             Debug.Log("Finish");
             //Console.ReadKey();
         }
+    }
+
+
+    IEnumerator UpdateSensorValue(){
+                    List<long> distances = new List<long>();
+            long time_stamp = 0;
+        for (;;) {
+                string receive_data = read_line(this._networkStream);
+                if (!SCIP_Reader.MD(receive_data, ref time_stamp, ref distances)) {
+					this.outInputField.text += receive_data + "\n";
+                   Debug.Log(receive_data);
+                    break;
+                }
+                if (distances.Count == 0) {
+                    Debug.Log("distances.Count == 0");
+                    this.outInputField.text += receive_data + "\n";
+					Debug.Log(receive_data);
+                    continue;
+                }
+                // データ表示部分
+                //TODO:かっこよくしたい。円表示
+                for(int j =0; j < distances.Count; j++){
+				//this.outInputField.text += "\ntime stamp: " + time_stamp.ToString() + " distance[" + j + "] : " + distances[j].ToString() + "\n";
+					Debug.Log("time stamp: " + time_stamp.ToString() + " distance[" + j + "] : " + distances[j].ToString() );
+                }
+
+
+                //
+                yield return new WaitForSeconds(0.1f);//0.1秒後に処理
+            }
+
+    }
+
+
+    public void StopSensor(){
+            StopCoroutine(this._sensorCoroutine );
+
+            write(this._networkStream, SCIP_Writer.QT());    // stop measurement mode
+            read_line(this._networkStream); // ignore echo back
+            this._networkStream.Close();
+            this._urgTCPClient.Close();
     }
 
 
